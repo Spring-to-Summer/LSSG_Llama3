@@ -1,0 +1,65 @@
+description: LSSG environment setup with CUDA 11.8, py311, and Llama-3.1-8B-Instruct
+
+
+environment:
+  image: <需要换成平台里可用的 CUDA 11.8 Ubuntu 22.04 基础镜像>
+  setup:
+  - sudo apt-get update -y
+  - sudo apt-get install -y python3 python3-pip python3-venv git wget curl ca-certificates bash build-essential
+  - sudo ln -sf /usr/bin/python3 /usr/bin/python
+
+  - echo "Building py311 virtual environment..."
+  - python -m venv /opt/py311
+
+  - >
+    source /opt/py311/bin/activate &&
+    export CUDA_HOME=/usr/local/cuda &&
+    export PATH=/opt/py311/bin:$CUDA_HOME/bin:$PATH &&
+    export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH &&
+    python --version &&
+    pip install --upgrade pip
+
+  - >
+    source /opt/py311/bin/activate &&
+    export CUDA_HOME=/usr/local/cuda &&
+    export PATH=/opt/py311/bin:$CUDA_HOME/bin:$PATH &&
+    export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH &&
+    cd $CONFIG_DIR &&
+    pip install --no-cache-dir -r requirements.txt
+
+
+code:
+  local_dir: $CONFIG_DIR
+
+storage:
+  data:
+    storage_account_name: storage4cluster
+    container_name: amulet
+    mount_dir: /mnt/blobcontainer
+
+jobs:
+- name: searchr1-passk
+  sku: 80G4-A100-NvLink # 40G8-A100-NvLink # 80G8-A100-NvLink    # 80G1-A100 
+  mpi: False
+  process_count_per_node: 0
+  command:
+  - bash sing_bash/sing_passk.sh
+
+  sla_tier: Premium
+  execution_mode: basic
+  priority: high
+  azml_int: True
+  identity: managed
+  submit_args:
+    env:
+      {_AZUREML_SINGULARITY_JOB_UAI: "/subscriptions/e033d461-1923-44a7-872b-78f1d35a86dd/resourcegroups/rg-msra-oc-ml-miic-sg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/msra-oc-ml-miic-sg-mi",
+        WANDB_API_KEY: "5d2387dd84fa5dc187a2e2994378119a0e279f51",
+        FILE_ROOT: "/mnt/blobcontainer/projects/v-qiaodan",
+        NCCL_DEBUG: "INFO"}
+  tags:  # 这个必须填
+      ["Training-LSSG"]
+
+  
+
+
+  
